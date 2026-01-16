@@ -22,18 +22,61 @@ window.addEventListener('scroll', () => {
 const mobileMenuToggle = document.getElementById('mobileMenuToggle');
 const navMenu = document.getElementById('navMenu');
 
-mobileMenuToggle.addEventListener('click', () => {
-    navMenu.classList.toggle('active');
-    mobileMenuToggle.classList.toggle('active');
-});
-
-// Close mobile menu when clicking on a link
-document.querySelectorAll('.nav-link').forEach(link => {
-    link.addEventListener('click', () => {
-        navMenu.classList.remove('active');
-        mobileMenuToggle.classList.remove('active');
+if (mobileMenuToggle && navMenu) {
+    mobileMenuToggle.addEventListener('click', () => {
+        navMenu.classList.toggle('active');
+        mobileMenuToggle.classList.toggle('active');
+        
+        // Prevent body scroll when menu is open
+        if (navMenu.classList.contains('active')) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
     });
-});
+
+    // Close mobile menu when clicking on a link
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+            navMenu.classList.remove('active');
+            mobileMenuToggle.classList.remove('active');
+            document.body.style.overflow = '';
+        });
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!navMenu.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
+            if (navMenu.classList.contains('active')) {
+                navMenu.classList.remove('active');
+                mobileMenuToggle.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        }
+    });
+
+    // Close menu on escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && navMenu.classList.contains('active')) {
+            navMenu.classList.remove('active');
+            mobileMenuToggle.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    });
+
+    // Handle window resize
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            if (window.innerWidth > 768) {
+                navMenu.classList.remove('active');
+                mobileMenuToggle.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        }, 250);
+    });
+}
 
 // ===================================
 // SMOOTH SCROLLING FOR ANCHOR LINKS
@@ -48,12 +91,22 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         const targetElement = document.querySelector(targetId);
         
         if (targetElement) {
-            const offsetTop = targetElement.offsetTop - 100; // Account for fixed navbar
+            // Calculate offset based on screen size
+            const isMobile = window.innerWidth <= 768;
+            const offset = isMobile ? 80 : 100;
+            const offsetTop = targetElement.offsetTop - offset;
             
             window.scrollTo({
                 top: offsetTop,
                 behavior: 'smooth'
             });
+            
+            // Close mobile menu if open
+            if (isMobile && navMenu && navMenu.classList.contains('active')) {
+                navMenu.classList.remove('active');
+                mobileMenuToggle.classList.remove('active');
+                document.body.style.overflow = '';
+            }
         }
     });
 });
@@ -583,3 +636,184 @@ const createCursorEffect = () => {
 
 // Uncomment to enable custom cursor
 // createCursorEffect();
+
+// ===================================
+// MOBILE-SPECIFIC ENHANCEMENTS
+// ===================================
+
+// Detect mobile device
+const isMobileDevice = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
+// Optimize animations for mobile
+if (isMobileDevice()) {
+    // Reduce animation complexity on mobile
+    document.querySelectorAll('[data-aos]').forEach(element => {
+        const delay = element.getAttribute('data-aos-delay');
+        if (delay && parseInt(delay) > 200) {
+            element.setAttribute('data-aos-delay', '100');
+        }
+    });
+}
+
+// Add touch feedback to interactive elements
+const addTouchFeedback = () => {
+    const interactiveElements = document.querySelectorAll('.btn, .service-card, .tool-card, .faq-question');
+    
+    interactiveElements.forEach(element => {
+        element.addEventListener('touchstart', function() {
+            this.style.transform = 'scale(0.98)';
+        }, { passive: true });
+        
+        element.addEventListener('touchend', function() {
+            setTimeout(() => {
+                this.style.transform = '';
+            }, 150);
+        }, { passive: true });
+    });
+};
+
+if (isMobileDevice()) {
+    addTouchFeedback();
+}
+
+// Improve scroll performance on mobile
+let ticking = false;
+const handleScroll = () => {
+    if (!ticking) {
+        window.requestAnimationFrame(() => {
+            revealOnScroll();
+            ticking = false;
+        });
+        ticking = true;
+    }
+};
+
+window.addEventListener('scroll', handleScroll, { passive: true });
+
+// Handle orientation change
+window.addEventListener('orientationchange', () => {
+    // Close mobile menu on orientation change
+    if (navMenu && navMenu.classList.contains('active')) {
+        navMenu.classList.remove('active');
+        if (mobileMenuToggle) {
+            mobileMenuToggle.classList.remove('active');
+        }
+        document.body.style.overflow = '';
+    }
+    
+    // Recalculate layout after orientation change
+    setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+    }, 300);
+});
+
+// Prevent zoom on input focus (iOS)
+const preventZoomOnFocus = () => {
+    const viewport = document.querySelector('meta[name=viewport]');
+    if (viewport) {
+        const originalContent = viewport.content;
+        
+        document.addEventListener('focusin', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                viewport.content = originalContent + ', maximum-scale=1.0';
+            }
+        });
+        
+        document.addEventListener('focusout', () => {
+            viewport.content = originalContent;
+        });
+    }
+};
+
+if (isMobileDevice()) {
+    preventZoomOnFocus();
+}
+
+// Add swipe to close mobile menu
+let touchStartX = 0;
+let touchEndX = 0;
+
+const handleSwipe = () => {
+    if (touchEndX < touchStartX - 50 && navMenu && navMenu.classList.contains('active')) {
+        // Swipe left detected
+        navMenu.classList.remove('active');
+        if (mobileMenuToggle) {
+            mobileMenuToggle.classList.remove('active');
+        }
+        document.body.style.overflow = '';
+    }
+};
+
+if (navMenu) {
+    navMenu.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+
+    navMenu.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    }, { passive: true });
+}
+
+// Lazy load images for better mobile performance
+const lazyLoadImages = () => {
+    const images = document.querySelectorAll('img[loading="lazy"]');
+    
+    if ('IntersectionObserver' in window) {
+        const imageObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    if (img.dataset.src) {
+                        img.src = img.dataset.src;
+                        img.removeAttribute('data-src');
+                    }
+                    imageObserver.unobserve(img);
+                }
+            });
+        });
+        
+        images.forEach(img => imageObserver.observe(img));
+    }
+};
+
+lazyLoadImages();
+
+// Viewport height fix for mobile browsers
+const setViewportHeight = () => {
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+};
+
+setViewportHeight();
+window.addEventListener('resize', debounce(setViewportHeight, 250));
+
+// Performance monitoring for mobile
+if (isMobileDevice()) {
+    console.log('📱 Mobile device detected - optimizations applied');
+    
+    // Log viewport dimensions
+    console.log(`Viewport: ${window.innerWidth}x${window.innerHeight}`);
+    
+    // Check for touch support
+    if ('ontouchstart' in window) {
+        console.log('✅ Touch events supported');
+    }
+}
+
+// Add pull-to-refresh prevention on mobile
+let startY = 0;
+
+document.addEventListener('touchstart', (e) => {
+    startY = e.touches[0].pageY;
+}, { passive: true });
+
+document.addEventListener('touchmove', (e) => {
+    const y = e.touches[0].pageY;
+    // Prevent pull-to-refresh if at top of page
+    if (window.scrollY === 0 && y > startY) {
+        e.preventDefault();
+    }
+}, { passive: false });
